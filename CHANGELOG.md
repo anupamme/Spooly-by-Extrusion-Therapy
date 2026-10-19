@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.20
+
+- Updated IP-address and URI parsing dependencies.
+- Updated the HTTP library used by Electron build tooling with upstream security fixes.
+- Updated Electron to 43.5.0 and refreshed XML/YAML build dependencies.
+
 ## 0.1.19
 
 - Added macOS network-permission troubleshooting in Setup, with a Privacy Settings button and a saved-printer connection check.
