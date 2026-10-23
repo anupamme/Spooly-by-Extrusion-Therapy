@@ -5,6 +5,7 @@ project=$(cd -- "$(dirname -- "$0")/.." && pwd)
 source_dir=$(realpath "${1:-$project/dist-linux-release/linux-unpacked}")
 archive=$(realpath "${2:-$source_dir/resources/app.asar}")
 version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$project/package.json")
+[[ "$version" =~ ^[0-9A-Za-z.+-]+$ ]] || { echo 'Invalid version string in package.json.' >&2; exit 1; }
 tool=${APPIMAGETOOL:-$project/appimagetool-x86_64.AppImage}
 [[ -x "$tool" ]] || { echo 'Set APPIMAGETOOL to the appimagetool executable.' >&2; exit 1; }
 [[ -x "$source_dir/spooly" && -f "$archive" ]] || { echo 'Build the Linux unpacked application first.' >&2; exit 1; }
