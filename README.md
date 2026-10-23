@@ -62,7 +62,7 @@ Other Bambu Lab and Moonraker-compatible machines may work because they use the 
 
 ## How it works
 
-Spooly runs on macOS, Windows, or supported Linux systems and connects directly to configured printers on the same local network. Bambu connections use the printer's local MQTT-over-TLS service. Klipper connections use Moonraker's local HTTP API. There is no Spooly account, cloud relay, analytics service, or telemetry collection.
+Spooly normally connects directly to printers on the same local network: Bambu uses local MQTT-over-TLS, and Klipper uses Moonraker's HTTP API. If the regular Bambu connection fails, experimental **Bambu (Fallback)** can use an available Bambu Studio session to receive status through Bambu's service. See the [setup guide](docs/BAMBU_SETUP.md#experimental-bambu-fallback).
 
 Printer configuration stays on the computer under the current operating-system user account. Spooly has no account system, cloud service, advertising, or analytics. Read the full [privacy and local-data note](PRIVACY.md).
 
@@ -88,7 +88,7 @@ pnpm run dist:mac
 pnpm run dist:win
 ```
 
-The macOS command requires macOS. Cross-building the Windows packages uses Electron Builder.
+The macOS command requires macOS and Xcode command-line tools. Before Windows packaging, run `scripts\build-fallback-windows.cmd` on Windows with Node.js and MSVC x64 Build Tools installed. It builds the native helper into `build/fallback/win32-x64`; copy that output into the same source checkout if cross-packaging with Electron Builder. See the [Linux guide](docs/LINUX_INSTALL.md) for Linux builds. Vendor networking libraries are not bundled.
 
 ## Contributing
 

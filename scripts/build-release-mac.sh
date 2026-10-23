@@ -19,6 +19,7 @@ if [[ -z "$signing_identity" ]]; then
 fi
 
 cd "$project_dir"
+node scripts/build-fallback.cjs
 
 corepack pnpm exec electron-builder --mac dmg --arm64
 

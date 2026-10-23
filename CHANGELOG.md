@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.21
+
+- Added experimental Bambu Fallback for Bambu printers that have difficulty connecting through the regular Spooly connection.
+
 ## 0.1.20
 
 - Updated IP-address and URI parsing dependencies.

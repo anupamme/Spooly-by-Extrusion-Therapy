@@ -5,6 +5,11 @@ const scaleOut = document.querySelector('#scaleOut');
 const launch = document.querySelector('#launch');
 const automaticUpdates = document.querySelector('#automaticUpdates');
 let supportsNetworkHelp = false;
+let fallbackAvailable = false;
+window.spooly.fallbackAvailable().then(available => {
+  fallbackAvailable = available === true;
+  document.querySelectorAll('option[value="bambu-fallback"]').forEach(option => { option.disabled = !fallbackAvailable; });
+}).catch(() => {});
 function revealNetworkHelp() {
   if (!supportsNetworkHelp) return;
   document.querySelector('#networkHelpDetails').open = true;
@@ -87,6 +92,8 @@ function cardValue(card) {
   card.querySelectorAll('[data-field]').forEach((input) => {
     printer[input.dataset.field] = input.type === 'number' ? Number(input.value) : input.value.trim();
   });
+  if (printer.type === 'bambu-fallback') { printer.type = 'bambu';printer.connection = 'fallback'; }
+  else printer.connection = 'direct';
   return printer;
 }
 
@@ -127,7 +134,25 @@ function addPrinter(data = {}, { prepend = false, focus = false } = {}) {
   const card = template.content.firstElementChild.cloneNode(true);
   card.dataset.id = data.id || crypto.randomUUID();
   card.querySelectorAll('[data-field]').forEach((input) => { if (data[input.dataset.field] !== undefined) input.value = data[input.dataset.field]; });
-  const updateType = () => card.classList.toggle('is-bambu', card.querySelector('[data-field="type"]').value === 'bambu');
+  const type = card.querySelector('[data-field="type"]');
+  const fallback = document.createElement('option');
+  fallback.value = 'bambu-fallback';fallback.textContent = 'Bambu (Fallback)';fallback.disabled = !fallbackAvailable;
+  type.append(fallback);
+  if (data.type === 'bambu' && data.connection === 'fallback') type.value = 'bambu-fallback';
+  const hint = document.createElement('p');
+  hint.className = 'fallback-hint';
+  hint.textContent = 'If you can’t connect using the regular Bambu connection, try Bambu Fallback. Experimental.';
+  card.querySelector('.grid').append(hint);
+  const updateType = () => {
+    const isFallback = type.value === 'bambu-fallback';
+    card.classList.toggle('is-bambu', type.value === 'bambu' || isFallback);
+    card.classList.toggle('is-fallback', isFallback);
+    hint.hidden = !isFallback;
+    card.querySelector('[data-field="host"]').closest('label').hidden = isFallback;
+    card.querySelector('[data-field="accessCode"]').closest('label').hidden = isFallback;
+    card.querySelector('.scan-bambu').textContent = isFallback ? 'Find printers' : 'Scan local network';
+    card.querySelector('.guide-button').hidden = isFallback;
+  };
   card.querySelector('[data-field="type"]').addEventListener('change', updateType);
   card.querySelector('.guide-button').addEventListener('click', () => document.querySelector('#bambuGuide').showModal());
   card.querySelector('.scan-moonraker').addEventListener('click', async (event) => {
@@ -171,15 +196,16 @@ function addPrinter(data = {}, { prepend = false, focus = false } = {}) {
   card.querySelector('.scan-bambu').addEventListener('click', async (event) => {
     const button = event.currentTarget;
     const results = card.querySelector('.bambu-scan-results');
+    const usingFallback = type.value === 'bambu-fallback';
     button.disabled = true;
     button.textContent = 'Scanning…';
     results.replaceChildren();
     try {
-      const printers = await window.spooly.scanBambu();
+      const printers = await (usingFallback ? window.spooly.fallbackPrinters() : window.spooly.scanBambu());
       const selectPrinter = (printer) => {
         const duplicate = existingCard({ ...printer, type: 'bambu' }, card);
         if (duplicate) { revealDuplicate(duplicate, results, printer.name); return false; }
-        card.querySelector('[data-field="host"]').value = printer.host;
+        if (printer.host) card.querySelector('[data-field="host"]').value = printer.host;
         card.querySelector('[data-field="serial"]').value = printer.serial;
         const name = card.querySelector('[data-field="name"]');
         if (!name.value) name.value = printer.name;
@@ -192,17 +218,22 @@ function addPrinter(data = {}, { prepend = false, focus = false } = {}) {
         const choice = document.createElement('button');
         choice.type = 'button';
         const duplicate = existingCard({ ...printer, type: 'bambu' }, card);
-        choice.textContent = `${printer.name} · ${printer.host}${duplicate ? ' · already added' : ''}`;
+        choice.textContent = `${printer.name}${printer.host ? ` · ${printer.host}` : ''}${duplicate ? ' · already added' : ''}`;
         choice.disabled = Boolean(duplicate);
         choice.addEventListener('click', () => selectPrinter(printer));
         results.append(choice);
       });
       else {
-        button.textContent = 'Scan local network';
-        results.textContent = 'BAMBU-DISCOVERY-01 — No Bambu printers answered the scan. Try manual entry.';
-        revealNetworkHelp();
+        button.textContent = usingFallback ? 'Find printers' : 'Scan local network';
+        results.textContent = usingFallback ? 'No printers found through Bambu Fallback. Check that your printer appears in Bambu Studio.' : 'BAMBU-DISCOVERY-01 — No Bambu printers answered the scan. Try manual entry.';
+        if (!usingFallback) revealNetworkHelp();
       }
     } catch (error) {
+      if (usingFallback) {
+        button.textContent = 'Find printers';
+        results.textContent = 'BAMBU-FALLBACK-01 — Could not find printers. Check your internet connection and Bambu Studio sign-in.';
+        return;
+      }
       button.textContent = 'Scan failed — try manual entry';
       revealNetworkHelp();
       results.textContent = String(error?.message || '').includes('BAMBU-DISCOVERY-02')
@@ -210,7 +241,7 @@ function addPrinter(data = {}, { prepend = false, focus = false } = {}) {
         : 'BAMBU-DISCOVERY-03 — The scan could not complete. Try again or enter the printer manually.';
     } finally {
       button.disabled = false;
-      if (button.textContent === 'Scanning…') button.textContent = 'Scan local network';
+      if (button.textContent === 'Scanning…') button.textContent = usingFallback ? 'Find printers' : 'Scan local network';
     }
   });
   card.querySelector('.remove').addEventListener('click', () => card.remove());
@@ -229,7 +260,7 @@ function readPrinters() {
   const seen = new Set();
   return [...list.children].map(cardValue).filter((printer) => {
     const key = printerKey(printer);
-    if (!printer.name || !printer.host || seen.has(key)) return false;
+    if (!printer.name || (printer.connection === 'fallback' ? !printer.serial : !printer.host) || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
@@ -290,6 +321,11 @@ scale.addEventListener('input', () => {
 });
 document.querySelector('#save').addEventListener('click', async () => {
   const saved = document.querySelector('#saved');
+  const incomplete = [...list.children].map(cardValue).find(printer => printer.name && (printer.connection === 'fallback' ? !printer.serial : !printer.host));
+  if (incomplete) {
+    saved.textContent = `Enter ${incomplete.connection === 'fallback' ? 'a serial number' : 'an IP address'} for ${incomplete.name} before saving.`;
+    return;
+  }
   const printers = readPrinters();
   const newPrinterCount = printers.filter((printer) => !existingPrinterIds.has(printer.id)).length;
   const saveMessage = newPrinterCount > 0

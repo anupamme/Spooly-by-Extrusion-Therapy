@@ -1,6 +1,6 @@
 {
   "name": "spooly",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "author": "Extrusion Therapy",
   "description": "A desktop pet that watches your 3D printers.",
   "main": "src/main.js",
@@ -9,6 +9,7 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "test": "node --test test/*.test.js",
+    "build:fallback": "node scripts/build-fallback.cjs",
     "pack:mac": "electron-builder --mac dir --arm64",
     "dist:mac": "zsh scripts/build-release-mac.sh",
     "pack:win": "electron-builder --win dir --x64",
@@ -57,6 +58,8 @@
       }
     ],
     "mac": {
+      "sign": "scripts/sign-mac.cjs",
+      "extraResources": [{ "from": "build/fallback/darwin-arm64/bambu-fallback", "to": "fallback/bambu-fallback" }],
       "category": "public.app-category.utilities",
       "icon": "assets/spooly-idle-full.png",
       "target": "dmg",
@@ -77,6 +80,7 @@
       ]
     },
     "win": {
+      "extraResources": [{ "from": "build/fallback/win32-x64/bambu-fallback.exe", "to": "fallback/bambu-fallback.exe" }],
       "target": ["nsis"],
       "icon": "build/icon.ico"
     }

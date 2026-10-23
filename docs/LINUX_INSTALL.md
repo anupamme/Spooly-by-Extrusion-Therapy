@@ -52,11 +52,12 @@ Installs a root-owned copy at `/opt/spooly-appimage/Spooly.AppImage`, adds an ap
 <details>
 <summary>Building from source (developers only)</summary>
 
-Build on x86-64 Ubuntu with Node.js, pnpm, Python 3/GObject GdkPixbuf, `dpkg-deb`, `desktop-file-validate`, and AppImage's `appimagetool` installed. The .deb dependency names target modern Ubuntu (t64 libraries).
+Build on x86-64 Ubuntu with Node.js, pnpm, a C++17-capable `g++`, Python 3/GObject GdkPixbuf, `dpkg-deb`, `desktop-file-validate`, and AppImage's `appimagetool` installed. The .deb dependency names target modern Ubuntu (t64 libraries).
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm test
+pnpm run build:fallback
 APPIMAGETOOL=/absolute/path/to/appimagetool-x86_64.AppImage pnpm run dist:linux
 ```
 

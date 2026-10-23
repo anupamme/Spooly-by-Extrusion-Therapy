@@ -6,6 +6,8 @@ const Store = require('electron-store');
 const { aggregatePrinters } = require('./state');
 const { MoonrakerAdapter } = require('./adapters/moonraker');
 const { BambuAdapter } = require('./adapters/bambu');
+const { BambuFallbackAdapter } = require('./adapters/bambu-fallback');
+const { availability: fallbackAvailability, listPrinters: fallbackPrinters, hasActiveHelpers, shutdown: shutdownFallback } = require('./bambu-fallback');
 const { scanBambuPrinters } = require('./discovery/bambu');
 const { scanMoonrakerPrinters } = require('./discovery/moonraker');
 const { dedupePrinters, samePrinterConfiguration } = require('./printers');
@@ -567,7 +569,9 @@ async function configureAdapters(setupPrinterIds = new Set(), { preserveUnchange
     }
   };
   adapters = configs.map((config) => preservedAdapters.get(config.id)
-    || (config.type === 'bambu' ? new BambuAdapter(config) : new MoonrakerAdapter(config)));
+    || (config.type === 'bambu'
+      ? (config.connection === 'fallback' ? new BambuFallbackAdapter(config) : new BambuAdapter(config))
+      : new MoonrakerAdapter(config)));
   adaptersToDisconnect.forEach((adapter) => adapter.disconnect?.());
   adapters.filter((adapter) => adapter instanceof BambuAdapter && !preservedAdapters.has(adapter.config.id))
     .forEach((adapter) => adapter.connect(
@@ -615,10 +619,19 @@ app.on('second-instance', () => {
 
 app.on('window-all-closed', () => {});
 app.on('activate', () => petWindow?.show());
-app.on('before-quit', () => { app.isQuitting = true; stopAdapters(); clearInterval(automaticUpdateTimer); });
+let fallbackShutdownComplete = false;
+app.on('before-quit', event => {
+  app.isQuitting = true;stopAdapters();clearInterval(automaticUpdateTimer);
+  if (!fallbackShutdownComplete && hasActiveHelpers()) {
+    event.preventDefault();
+    shutdownFallback().finally(() => { fallbackShutdownComplete = true;app.quit(); });
+  }
+});
 
 ipcMain.handle('snapshot:get', () => snapshot());
 ipcMain.handle('bambu:scan', () => scanBambuPrinters());
+ipcMain.handle('bambu:fallback-available', () => fallbackAvailability());
+ipcMain.handle('bambu:fallback-printers', () => fallbackPrinters());
 ipcMain.handle('moonraker:scan', () => scanMoonrakerPrinters());
 ipcMain.handle('settings:get', settingsPayload);
 let networkCheck = null;
@@ -691,6 +704,13 @@ ipcMain.handle('settings:save', async (_event, settings) => {
   const nextIds = new Set(printers.map((printer) => printer.id));
   pendingSetupPrinterIds = nextPendingSetupPrinters(pendingSetupPrinterIds, existingIds, nextIds);
   const setupPrinterIds = new Set(pendingSetupPrinterIds);
+  // Switching an existing Bambu printer to another transport is an explicit
+  // setup attempt, unlike an ordinary save of unchanged printer settings.
+  const previousPrinters = store.get('printers');
+  printers.forEach(printer => {
+    const previous = previousPrinters.find(entry => entry.id === printer.id);
+    if (previous && (previous.connection || 'direct') !== (printer.connection || 'direct')) setupPrinterIds.add(printer.id);
+  });
   store.set('printers', preparePrintersForStorage(printers));
   store.set('scale', settings.scale);
   store.set('launchAtLogin', settings.launchAtLogin);

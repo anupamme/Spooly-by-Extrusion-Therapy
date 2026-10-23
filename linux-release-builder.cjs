@@ -3,6 +3,7 @@ module.exports = {
   directories: { output: 'dist-linux-release' },
   appImage: { executableArgs: ['--ozone-platform=x11', '--disable-gpu'] },
   linux: {
+    extraResources: [{ from: 'build/fallback/linux-x64/bambu-fallback', to: 'fallback/bambu-fallback' }],
     executableName: 'spooly',
     category: 'Utility',
     icon: 'assets/spooly-idle-full.png',

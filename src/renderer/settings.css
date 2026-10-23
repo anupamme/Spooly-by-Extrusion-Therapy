@@ -26,6 +26,9 @@ button:disabled { cursor: default; opacity: .55; }
 .primary { background: #40cbd2; color: #071214; border: 0; font-weight: 700; }
 .remove { margin-top: 9px; color: #ff9fab; }
 .bambu { display: none; }
+.fallback-hint { grid-column: 1 / -1; font-size: 12px; line-height: 1.4; }
+.fallback-hint[hidden] { display: none; }
+.printer [hidden] { display: none !important; }
 .printer.is-bambu .bambu { display: grid; }
 .printer.is-bambu .moon { display: none; }
 .bambu-actions { grid-column: 1 / -1; grid-template-columns: auto auto; justify-content: start; gap: 7px; }

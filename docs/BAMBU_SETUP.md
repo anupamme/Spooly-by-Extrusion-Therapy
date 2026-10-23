@@ -54,6 +54,12 @@ Work through these in order:
 
 Bambu's security documentation explains that Developer Mode allows third-party MQTT software to function without the newer authorization-control layer. See the [Bambu Lab Security White Paper](https://cdn1.bambulab.com/trust-center/file/bambulab-security-whitepaper-en.pdf).
 
+## Experimental Bambu Fallback
+
+If the regular Bambu connection does not work, try **Bambu (Fallback)** in the printer-type menu, then **Find printers**, select your printer, and **Save & connect**.
+
+This option is available only when Spooly finds a compatible installed Bambu Studio session. Open Studio and sign in there first if necessary, then reopen Spooly Setup. Fallback needs an internet connection and a cloud-connected printer; it does not replace the normal connection for LAN Only printers. No additional login is entered in Spooly. See [privacy details](../PRIVACY.md).
+
 ## Information to collect when asking for help
 
 - Printer model
